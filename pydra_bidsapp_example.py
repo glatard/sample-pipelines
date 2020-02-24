@@ -49,28 +49,28 @@ if __name__ == "__main__":
     )
 
     @pydra.mark.task
-    def fsl_bet_boutiques(T1_file, output_dir, work_dir):
-        print(output_dir)
+    def fsl_bet_boutiques(T1_file, output_dir):
         maskfile = os.path.join(
             output_dir,
             (
                 os.path.split(T1_file)[-1]
-                .replace("_T1w", "brain")
+                .replace("_T1w", "_brain")
                 .replace(".gz", "")
                 .replace(".nii", "")
-            )
+            ),
+        )
+        fsl_bet = function("zenodo.3267250")
+        ret = fsl_bet(
+            "-v{0}:{0}".format(T1_file.split('sub-')[0]),
+            "-v{0}:{0}".format(output_dir),
+            infile=T1_file,
+            maskfile=maskfile,
         )
 
-        print(maskfile)
-
-        fsl_bet = function("zenodo.3267250")
-        ret = fsl_bet("-v{0}:{0}".format(work_dir),infile=T1_file, maskfile=maskfile)
-        
-        if ret.exit_code != 0 :
+        if ret.exit_code != 0:
             raise Exception(ret.stdout, ret.stderr)
 
         return ret.output_files[0].file_name
-
 
     T1_files = [
         T1_file
@@ -87,13 +87,15 @@ if __name__ == "__main__":
 
     wf.split("T1_file", T1_file=T1_files)
 
-    wf.add(fsl_bet_boutiques(name="fsl_bet", T1_file=wf.lzin.T1_file, output_dir=wf.lzin.output_dir, work_dir=os.getcwd()))
+    wf.add(
+        fsl_bet_boutiques(
+            name="fsl_bet", T1_file=wf.lzin.T1_file, output_dir=wf.lzin.output_dir
+        )
+    )
 
     wf.combine("T1_file")
     wf.set_output([("out", wf.fsl_bet.lzout.out)])
 
     with pydra.Submitter(plugin="cf") as sub:
         sub(wf)
-    print(wf.result())
-    print(group_analysis(wf.result()[0]))
-
+    print("Group analysis result:", group_analysis(wf.result()[0]))
