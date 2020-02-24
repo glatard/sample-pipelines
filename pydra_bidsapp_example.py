@@ -25,6 +25,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Example BIDS app using Pydra and Boutiques (performs participant and group analysis)"
     )
+    # From Tristan (TG): to make this more generic, we could parse the inputs of
+    # the Boutiques descriptor, including their description, and add them to the
+    # parser and pydra workflow inputs. We could also parse the Boutiques outputs
+    # and add them to the workflow.
     parser.add_argument(
         "bids_dir",
         help="The directory with the input dataset "
@@ -48,8 +52,16 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
     )
 
+    # TG: for the pydra integration, we should create a function that returns
+    # a function similar to the one below. That function should be generic to any
+    # descriptor. See comments below.
     @pydra.mark.task
+    # TG: the input arguments of the function should be parsed from the descriptor.
+    # This is what boutiques.descriptor2func.function does
     def fsl_bet_boutiques(T1_file, output_dir):
+        # TG: the output file paths can be obtained 
+        # using bosh.evaluate, passing an invocation.
+        # This logic duplicates what bosh does.
         maskfile = os.path.join(
             output_dir,
             (
@@ -60,6 +72,8 @@ if __name__ == "__main__":
             ),
         )
         fsl_bet = function("zenodo.3267250")
+        # TG: if the inputs are under cwd, no need to mount
+        # anything
         ret = fsl_bet(
             "-v{0}:{0}".format(T1_file.split('sub-')[0]),
             "-v{0}:{0}".format(output_dir),
